@@ -6,7 +6,9 @@ use crate::natives::util::make_native_from_func;
 use aptos_types::vm_status::StatusCode;
 use curve25519_dalek::scalar::Scalar;
 use move_deps::move_binary_format::errors::{PartialVMError, PartialVMResult};
-use move_deps::move_core_types::gas_algebra::{InternalGasPerArg, InternalGasPerByte};
+use move_deps::move_core_types::gas_algebra::{
+    GasQuantity, InternalGasPerArg, InternalGasPerByte, InternalGasUnit, NumArgs,
+};
 use move_deps::move_vm_types::values::{Reference, StructRef, Value};
 use move_deps::{move_vm_runtime::native_functions::NativeFunction, move_vm_types::pop_arg};
 use std::collections::VecDeque;
@@ -28,6 +30,8 @@ pub struct GasParameters {
     pub point_sub: InternalGasPerArg,
     pub point_parse_arg: InternalGasPerArg,
 
+    pub sha512_per_byte: InternalGasPerByte, // DEPRECATED
+    pub sha512_per_hash: InternalGasPerArg,  // DEPRECATED
     pub sha2_512_per_byte: InternalGasPerByte,
     pub sha2_512_per_hash: InternalGasPerArg,
 
@@ -42,6 +46,18 @@ pub struct GasParameters {
     pub scalar_neg: InternalGasPerArg,
     pub scalar_sub: InternalGasPerArg,
     pub scalar_parse_arg: InternalGasPerArg,
+}
+
+impl GasParameters {
+    /// Returns gas costs for a variable-time multiscalar multiplication (MSM) of size-n. The MSM
+    /// employed in curve25519 is:
+    ///  1. Strauss, when n <= 190, see https://www.jstor.org/stable/2310929
+    ///  2. Pippinger, when n > 190, which roughly requires O(n / log_2 n) scalar multiplications
+    /// For simplicity, we estimate the complexity as O(n / log_2 n)
+    pub fn multi_scalar_mul_gas(&self, size: usize) -> GasQuantity<InternalGasUnit> {
+        // TODO(Gas): Get benchmark numbers and handle size = 2 better, cause it returns `point_mul * 2` which gives no savings and thus no incentive to call the double_scalar_mul function
+        self.point_mul * NumArgs::new((size as f64 / f64::log2(size as f64)).ceil() as u64)
+    }
 }
 
 pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, NativeFunction)> {
@@ -110,10 +126,11 @@ pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, Nati
             ),
         ),
         (
-            "new_point_from_sha2_512_internal",
+            // NOTE: This was supposed to be more clearly named with *_sha2_512_*.
+            "new_point_from_sha512_internal",
             make_native_from_func(
                 gas_params.clone(),
-                ristretto255_point::native_new_point_from_sha2_512,
+                ristretto255_point::native_new_point_from_sha512,
             ),
         ),
         (
@@ -121,6 +138,13 @@ pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, Nati
             make_native_from_func(
                 gas_params.clone(),
                 ristretto255_point::native_new_point_from_64_uniform_bytes,
+            ),
+        ),
+        (
+            "double_scalar_mul_internal",
+            make_native_from_func(
+                gas_params.clone(),
+                ristretto255_point::native_double_scalar_mul,
             ),
         ),
         (
@@ -144,11 +168,12 @@ pub fn make_all(gas_params: GasParameters) -> impl Iterator<Item = (String, Nati
                 ristretto255_scalar::native_scalar_invert,
             ),
         ),
+        // NOTE: This was supposed to be more clearly named with *_sha2_512_*.
         (
-            "scalar_from_sha2_512_internal",
+            "scalar_from_sha512_internal",
             make_native_from_func(
                 gas_params.clone(),
-                ristretto255_scalar::native_scalar_from_sha2_512,
+                ristretto255_scalar::native_scalar_from_sha512,
             ),
         ),
         (

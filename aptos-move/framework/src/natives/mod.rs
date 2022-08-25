@@ -110,11 +110,13 @@ impl GasParameters {
                 sha2_512_per_hash: 0.into(),
                 scalar_sub: 0.into(),
                 point_parse_arg: 0.into(),
+                sha512_per_byte: 0.into(),
                 scalar_parse_arg: 0.into(),
+                sha512_per_hash: 0.into(),
             },
             bulletproofs: cryptography::bulletproofs::GasParameters {
-                per_bulletproof_deserialize: 0.into(),
-                per_bulletproof_verify: 0.into(),
+                per_rangeproof_deserialize: 0.into(),
+                per_bit_rangeproof_verify: 0.into(),
             },
             hash: hash::GasParameters {
                 sip_hash: hash::SipHashGasParameters {

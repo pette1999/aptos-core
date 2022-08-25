@@ -166,11 +166,17 @@ module aptos_std::ristretto255 {
         }
     }
 
+    /// DEPRECATED: Use the more clearly-named `new_point_from_sha2_512`
+    ///
+    /// Hashes the input to a uniformly-at-random RistrettoPoint via SHA512.
+    public fun new_point_from_sha512(sha512: vector<u8>): RistrettoPoint {
+        new_point_from_sha2_512(sha512)
+    }
 
     /// Hashes the input to a uniformly-at-random RistrettoPoint via SHA2-512.
     public fun new_point_from_sha2_512(sha2_512_input: vector<u8>): RistrettoPoint {
         RistrettoPoint {
-            handle: new_point_from_sha2_512_internal(sha2_512_input)
+            handle: new_point_from_sha512_internal(sha2_512_input)
         }
     }
 
@@ -276,6 +282,14 @@ module aptos_std::ristretto255 {
     /// Returns true if the two RistrettoPoints are the same points on the elliptic curve.
     native public fun point_equals(g: &RistrettoPoint, h: &RistrettoPoint): bool;
 
+    /// Computes a double-scalar multiplication, returning a_1 p_1 + a_2 p_2
+    /// This function is much faster than computing each a_i p_i using `point_mul` and adding up the results using `point_add`.
+    public fun double_scalar_mul(scalar1: &Scalar, point1: &RistrettoPoint, scalar2: &Scalar, point2: &RistrettoPoint): RistrettoPoint {
+        RistrettoPoint {
+            handle: double_scalar_mul_internal(point1.handle, point2.handle, scalar1.data, scalar2.data)
+        }
+    }
+
     /// Computes a multi-scalar multiplication, returning a_1 p_1 + a_2 p_2 + ... + a_n p_n.
     /// This function is much faster than computing each a_i p_i using `point_mul` and adding up the results using `point_add`.
     public fun multi_scalar_mul(points: &vector<RistrettoPoint>, scalars: &vector<Scalar>): RistrettoPoint {
@@ -304,10 +318,17 @@ module aptos_std::ristretto255 {
         }
     }
 
-    /// Hashes the input to a uniformly-at-random Scalar via SHA2_512
+    /// DEPRECATED: Use the more clearly-named `new_scalar_from_sha2_512`
+    ///
+    /// Hashes the input to a uniformly-at-random Scalar via SHA2-512
+    public fun new_scalar_from_sha512(sha512_input: vector<u8>): Scalar {
+        new_scalar_from_sha2_512(sha512_input)
+    }
+
+    /// Hashes the input to a uniformly-at-random Scalar via SHA2-512
     public fun new_scalar_from_sha2_512(sha2_512_input: vector<u8>): Scalar {
         Scalar {
-            data: scalar_from_sha2_512_internal(sha2_512_input)
+            data: scalar_from_sha512_internal(sha2_512_input)
         }
     }
 
@@ -463,7 +484,8 @@ module aptos_std::ristretto255 {
     // Only used internally for implementing CompressedRistretto and RistrettoPoint
     //
 
-    native fun new_point_from_sha2_512_internal(sha2_512_input: vector<u8>): u64;
+    // NOTE: This was supposed to be more clearly named with *_sha2_512_*.
+    native fun new_point_from_sha512_internal(sha2_512_input: vector<u8>): u64;
 
     native fun new_point_from_64_uniform_bytes_internal(bytes: vector<u8>): u64;
 
@@ -485,6 +507,8 @@ module aptos_std::ristretto255 {
     native fun point_sub_internal(a: &RistrettoPoint, b: &RistrettoPoint, in_place: bool): u64;
 
     native fun point_neg_internal(a: &RistrettoPoint, in_place: bool): u64;
+
+    native fun double_scalar_mul_internal(point1: u64, point2: u64, scalar1: vector<u8>, scalar2: vector<u8>): u64;
 
     /// The generic arguments are needed to deal with some Move VM peculiarities which prevent us from borrowing the
     /// points (or scalars) inside a &vector in Rust.
@@ -508,7 +532,8 @@ module aptos_std::ristretto255 {
 
     native fun scalar_invert_internal(bytes: vector<u8>): vector<u8>;
 
-    native fun scalar_from_sha2_512_internal(sha2_512_input: vector<u8>): vector<u8>;
+    // NOTE: This was supposed to be more clearly named with *_sha2_512_*.
+    native fun scalar_from_sha512_internal(sha2_512_input: vector<u8>): vector<u8>;
 
     native fun scalar_mul_internal(a_bytes: vector<u8>, b_bytes: vector<u8>): vector<u8>;
 
@@ -806,7 +831,12 @@ module aptos_std::ristretto255 {
         let a = Scalar { data: A_SCALAR };
         let a_point = option::extract(&mut new_point_from_bytes(A_POINT));
         let b = Scalar { data: B_SCALAR };
-        assert!(point_equals(&expected, &basepoint_double_mul(&a, &a_point, &b)), 1);
+        let actual = basepoint_double_mul(&a, &a_point, &b);
+
+        assert!(point_equals(&expected, &actual), 1);
+
+        let expected = double_scalar_mul(&a, &a_point, &b, &basepoint());
+        assert!(point_equals(&expected, &actual), 1);
     }
 
     #[test]

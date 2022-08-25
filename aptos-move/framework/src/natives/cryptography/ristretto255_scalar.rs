@@ -62,7 +62,8 @@ pub(crate) fn native_scalar_invert(
     ))
 }
 
-pub(crate) fn native_scalar_from_sha2_512(
+// NOTE: This was supposed to be more clearly named with *_sha2_512_*.
+pub(crate) fn native_scalar_from_sha512(
     gas_params: &GasParameters,
     _context: &mut NativeContext,
     _ty_args: Vec<Type>,

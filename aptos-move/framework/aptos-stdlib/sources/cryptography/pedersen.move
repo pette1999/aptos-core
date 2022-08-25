@@ -3,7 +3,7 @@
 /// A Pedersen commitment to a value v under a _commitment key_ (g, h) is v * g + r * h, for a random scalar r.
 
 module aptos_std::pedersen {
-    use aptos_std::ristretto255::{Self, RistrettoPoint, Scalar, point_clone, CompressedRistretto};
+    use aptos_std::ristretto255::{Self, RistrettoPoint, Scalar, CompressedRistretto, point_compress};
 
     /// The default Pedersen randomness base used in our underlying Bulletproofs library.
     /// This is obtained by hashing the compressed Ristretto255 basepoint using SHA3-512 (not SHA2-512).
@@ -30,13 +30,8 @@ module aptos_std::pedersen {
 
     /// Returns a commitment val * val_base + r * rand_base where (val_base, rand_base) is the commitment key.
     public fun new_commitment(val: &Scalar, val_base: &RistrettoPoint, rand: &Scalar, rand_base: &RistrettoPoint): Commitment {
-        // TODO: No support for vector<&Type> in Move / and no `has copy` on RistrettoPoint forces us to explicitly copy things here.
-        // TODO: Could implement natively if this is too slow.
-        let points = vector<RistrettoPoint>[ point_clone(val_base), point_clone(rand_base) ];
-        let scalars = vector<Scalar>[ *val, *rand ];
-
         Commitment {
-            point: ristretto255::multi_scalar_mul(&points, &scalars)
+            point: ristretto255::double_scalar_mul(val, val_base, rand, rand_base)
         }
     }
 
@@ -64,8 +59,13 @@ module aptos_std::pedersen {
         ristretto255::point_add_assign(&mut c.point, point);
     }
 
-    /// Returns the underlying elliptic curve point representing the commitment.
+    /// Returns the underlying elliptic curve point representing the commitment as an in-memory RistrettoPoint.
     public fun commitment_as_point(c: &Commitment): &RistrettoPoint {
         &c.point
+    }
+
+    /// Returns the underlying elliptic curve point representing the commitment as a CompressedRistretto.
+    public fun commitment_to_compressed_point(c: &Commitment): CompressedRistretto {
+        point_compress(&c.point)
     }
 }
