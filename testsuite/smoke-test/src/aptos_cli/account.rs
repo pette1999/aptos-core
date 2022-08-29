@@ -4,6 +4,7 @@
 use crate::smoke_test_environment::SwarmBuilder;
 use aptos::account::create::DEFAULT_FUNDED_COINS;
 use aptos::common::types::GasOptions;
+use aptos_crypto::PrivateKey;
 use aptos_keygen::KeyGen;
 use aptos_types::{
     account_address::AccountAddress, account_config::CORE_CODE_ADDRESS,

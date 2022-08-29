@@ -4,7 +4,7 @@
 use crate::account::{
     create::{CreateAccount, DEFAULT_FUNDED_COINS},
     fund::FundWithFaucet,
-    key_rotation::RotateKey,
+    key_rotation::{RotateKey, RotateSummary},
     list::{ListAccount, ListQuery},
     transfer::{TransferCoins, TransferSummary},
 };
@@ -178,7 +178,11 @@ impl CliTestFramework {
         .await
     }
 
-    pub async fn rotate_key(&self, index: usize, new_private_key: String) -> CliTypedResult<()> {
+    pub async fn rotate_key(
+        &self,
+        index: usize,
+        new_private_key: String,
+    ) -> CliTypedResult<RotateSummary> {
         RotateKey {
             txn_options: self.transaction_options(index, None),
             // Do not save profile
@@ -186,7 +190,9 @@ impl CliTestFramework {
                 assume_yes: false,
                 assume_no: true,
             },
-            new_private_key,
+            new_private_key: Some(new_private_key),
+            save_to_profile: None,
+            new_private_key_file: None,
         }
         .execute()
         .await
