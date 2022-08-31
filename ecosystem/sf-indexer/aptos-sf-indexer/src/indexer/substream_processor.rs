@@ -52,28 +52,6 @@ pub trait SubstreamProcessor: Send + Sync + Debug {
     fn set_is_chain_id_verified(&mut self);
     //* Below are helper methods that don't need to be implemented *//
 
-    /// Gets the connection.
-    /// If it was unable to do so (default timeout: 30s), it will keep retrying until it can.
-    /// It's a static method because we need the connection before the processor is initialized
-    fn get_conn(pool: &PgDbPool) -> PgPoolConnection {
-        loop {
-            match pool.get() {
-                Ok(conn) => {
-                    GOT_CONNECTION.inc();
-                    return conn;
-                }
-                Err(err) => {
-                    UNABLE_TO_GET_CONNECTION.inc();
-                    aptos_logger::error!(
-                        retry_in = pool.connection_timeout(),
-                        "Could not get DB connection from pool, will retry. Error: {:?}",
-                        err
-                    );
-                }
-            };
-        }
-    }
-
     /// This is a helper method, tying together the other helper methods to allow tracking status in the DB
     async fn process_substream_with_status(
         &mut self,
@@ -143,7 +121,7 @@ pub trait SubstreamProcessor: Send + Sync + Debug {
 
     /// Actually performs the write for a `IndexerState` changeset
     fn apply_processor_status(&self, psm: &IndexerState) {
-        let conn = Self::get_conn(self.connection_pool());
+        let conn = get_conn(self.connection_pool());
         execute_with_better_error(
             &conn,
             diesel::insert_into(indexer_states::table)
@@ -195,6 +173,28 @@ pub trait SubstreamProcessor: Send + Sync + Debug {
             }
         }
         self.set_is_chain_id_verified();
+    }
+}
+
+/// Gets the connection.
+/// If it was unable to do so (default timeout: 30s), it will keep retrying until it can.
+/// It's a static method because we need the connection before the processor is initialized
+pub(crate) fn get_conn(pool: &PgDbPool) -> PgPoolConnection {
+    loop {
+        match pool.get() {
+            Ok(conn) => {
+                GOT_CONNECTION.inc();
+                return conn;
+            }
+            Err(err) => {
+                UNABLE_TO_GET_CONNECTION.inc();
+                aptos_logger::error!(
+                    "Could not get DB connection from pool, will retry in {:?}. Err: {:?}",
+                    pool.connection_timeout(),
+                    err
+                );
+            }
+        };
     }
 }
 

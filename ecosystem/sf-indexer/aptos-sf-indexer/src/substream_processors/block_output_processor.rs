@@ -4,8 +4,9 @@
 use crate::{
     database::{execute_with_better_error, get_chunks, PgDbPool, PgPoolConnection},
     indexer::{
-        errors::BlockProcessingError, processing_result::ProcessingResult,
-        substream_processor::SubstreamProcessor,
+        errors::BlockProcessingError,
+        processing_result::ProcessingResult,
+        substream_processor::{get_conn, SubstreamProcessor},
     },
     models::{
         events::EventModel,
@@ -441,7 +442,7 @@ impl SubstreamProcessor for BlockOutputSubstreamProcessor {
 
         let (txns, txn_details, events, wscs, wsc_details) =
             TransactionModel::from_transactions(&block_output.transactions);
-        let conn = Self::get_conn(self.connection_pool());
+        let conn = get_conn(self.connection_pool());
 
         let tx_result = insert_block(
             &conn,
