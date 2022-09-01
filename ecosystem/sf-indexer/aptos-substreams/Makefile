@@ -4,7 +4,7 @@ build:
 
 .PHONY: stream
 stream:
-	substreams run -p -e localhost:18015 substreams.yaml block_to_block_output --start-block 0 --stop-block +100
+	substreams run -p -e localhost:18015 substreams.yaml block_output_to_token --start-block 122 --stop-block +1
 
 .PHONY: codegen
 codegen:

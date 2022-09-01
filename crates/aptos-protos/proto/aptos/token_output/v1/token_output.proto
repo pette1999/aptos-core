@@ -1,0 +1,70 @@
+// Copyright (c) Aptos
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package aptos.token_output.v1;
+
+
+message Tokens {
+  uint64 block_height = 1;
+  uint32 chain_id = 2;
+  repeated Token tokens = 3;
+  repeated TokenOwnership token_ownerships = 4;
+  repeated TokenData token_datas = 5;
+  repeated CollectionData collection_datas = 6;
+}
+
+message Token {
+  TokenId token_id = 1;
+  uint64 property_version = 2;
+  uint64 transaction_version = 3;
+  string token_properties = 4;
+  uint64 amount = 5;
+}
+
+message TokenId {
+  string creator_address = 1;
+  string collection_name = 2;
+  string name = 3;
+}
+
+message TokenOfferId {
+  string creator_address = 1;
+  string collection_name = 2;
+  string name = 3;
+  uint64 transaction_version = 4;
+  string owner_address = 5;
+  uint64 amount = 6;
+}
+
+message TokenData {
+  string creator_address = 1;
+  string collection_name = 2;
+  string name = 3;
+  uint64 transaction_version = 4;
+  uint64 maximum = 5;
+  uint64 supply = 6;
+  uint64 largest_property_version = 7;
+  string metadata_uri = 8;
+  string payee_address = 9;
+  uint64 royalty_points_numerator = 10;
+  uint64 royalty_points_denominator = 11;
+  bool maximum_mutable = 12;
+  bool uri_mutable = 13;
+  bool description_mutable = 14;
+  bool properties_mutable = 15;
+  string default_properties = 16;
+}
+
+message CollectionData {
+  string creator_address = 1;
+  string collection_name = 2;
+  uint64 transaction_version = 3;
+  string metadata_uri = 4;
+  uint64 supply = 5;
+  uint64 maximum = 6;
+  bool maximum_mutable = 7;
+  bool uri_mutable = 8;
+  bool description_mutable = 9;
+}

@@ -1,19 +1,22 @@
 // Copyright (c) Aptos
 // SPDX-License-Identifier: Apache-2.0
 
+pub mod token_converter;
 pub mod transaction_converter;
 
 pub use aptos_protos::{
     block_output::v1::{
-        transaction_output::TxnData as TxnDataOutput, BlockOutput, TransactionOutput,
+        transaction_output::TxnData as TxnDataOutput, write_set_change_output::Change, BlockOutput,
+        TransactionOutput,
     },
     extractor::v1::{
         transaction::TransactionType, transaction::TxnData as TxnDataInput, Block, Event,
         Transaction,
     },
+    token_output::v1::Tokens,
 };
 
-use substreams::{errors::Error, store};
+use substreams::errors::Error;
 
 #[substreams::handlers::map]
 fn block_to_block_output(input_block: Block) -> Result<BlockOutput, Error> {
@@ -85,26 +88,44 @@ fn block_to_block_output(input_block: Block) -> Result<BlockOutput, Error> {
     })
 }
 
-#[substreams::handlers::store]
-fn store_count(transaction: Transaction, store: store::StoreAddInt64) {
-    store.add(transaction.version, generate_trx_key(), 1);
-    store.add(
-        transaction.version,
-        generate_trx_type_key(transaction.r#type()),
-        1,
-    );
-}
-
-fn generate_trx_key() -> String {
-    String::from("total")
-}
-
-fn generate_trx_type_key(trx_type: TransactionType) -> String {
-    match trx_type {
-        TransactionType::Genesis => "genesis",
-        TransactionType::BlockMetadata => "block_metadata",
-        TransactionType::StateCheckpoint => "state_checkpoint",
-        TransactionType::User => "user",
+#[substreams::handlers::map]
+fn block_output_to_token(block: BlockOutput) -> Result<Tokens, Error> {
+    let mut tokens = vec![];
+    let mut token_ownerships = vec![];
+    let mut token_datas = vec![];
+    let mut collection_datas = vec![];
+    for txn in block.transactions {
+        let txn_version = txn.transaction_info_output.unwrap().version;
+        for write_set_change in txn.write_set_changes {
+            if let Some(Change::TableItem(table_item)) = write_set_change.change {
+                let (token, token_ownership, token_data, collection_data) = (
+                    token_converter::get_token(&table_item, txn_version).unwrap(),
+                    token_converter::get_token_ownership(&table_item),
+                    token_converter::get_token_data(&table_item),
+                    token_converter::get_collection_data(&table_item),
+                );
+                if token.is_some() {
+                    substreams::log::info!("{:?}", token);
+                    tokens.push(token);
+                }
+                if token_ownership.is_some() {
+                    token_ownerships.push(token_ownership);
+                }
+                if token_data.is_some() {
+                    token_datas.push(token_data);
+                }
+                if collection_data.is_some() {
+                    collection_datas.push(collection_data);
+                }
+            }
+        }
     }
-    .to_string()
+    Ok(Tokens {
+        block_height: block.height,
+        chain_id: block.chain_id,
+        tokens: vec![],
+        token_ownerships: vec![],
+        token_datas: vec![],
+        collection_datas: vec![],
+    })
 }
