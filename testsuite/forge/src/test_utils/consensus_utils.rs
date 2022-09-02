@@ -54,7 +54,9 @@ pub async fn test_consensus_fault_tolerance(
     parts_in_cycle: usize,
     mut failure_injection: Box<dyn FailureInjection>,
     // (cycle, executed_epochs, executed_rounds, executed_transactions, current_state, previous_state)
-    mut check_cycle: Box<dyn FnMut(usize, u64, u64, u64, Vec<NodeState>, Vec<NodeState>)>,
+    mut check_cycle: Box<
+        dyn FnMut(usize, u64, u64, u64, Vec<NodeState>, Vec<NodeState>) -> anyhow::Result<()>,
+    >,
     new_epoch_on_cycle: bool,
 ) -> anyhow::Result<()> {
     let validator_clients = swarm.get_clients_with_names();
@@ -114,7 +116,7 @@ pub async fn test_consensus_fault_tolerance(
             cur.iter().map(|s| s.round).collect::<Vec<_>>()
         );
 
-        check_cycle(cycle, epochs, rounds, transactions, cur.clone(), previous);
+        check_cycle(cycle, epochs, rounds, transactions, cur.clone(), previous)?;
         if new_epoch_on_cycle {
             swarm.aptos_public_info().reconfig().await;
         }
