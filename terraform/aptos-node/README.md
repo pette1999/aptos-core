@@ -1,4 +1,19 @@
 Aptos Node Deployment
 =========================
 
-This directory provides terraforms to deploy a Aptos node, which includes a validator node and a fullnode, it also comes with a HAProxy in the helm chart so that it's easy to manage incoming traffic. The cloud-specific Terraform configs will create a Kubernetes cluster and then install the helm charts.
+This directory provides Terraform modules for a typical Aptos Node deployment, which includes both a validator node and fullnode, as well as HAProxy so that it's easy to manage incoming traffic. 
+
+These Terraform modules are cloud-specific, and generally consist of a few high-level components:
+* Cloud network configuration
+* An installation of that cloud's managed Kubernetes service
+* [Helm](https://helm.sh/) releases into that kubernetes cluster
+
+If you wish to deploy an Aptos Node from scratch, Terraform is an easy way to spin that up on a public cloud. Alternatively, you may install the Helm charts directly on pre-existing Kubernetes clusters.
+
+Steps:
+1. Install prerequisites
+2. Set up your account
+3. Set up your remote state file
+4. Terraform apply
+5. Check it
+6. To operate, see the helm/aptos-node README.md
