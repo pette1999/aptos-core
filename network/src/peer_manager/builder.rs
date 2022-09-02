@@ -448,7 +448,7 @@ impl PeerManagerBuilder {
         let (network_notifs_tx, network_notifs_rx) = config
             .inbound_queue
             .expect("Requires a service config")
-            .build();
+            .build_with_name(&config.name);
         let pm_context = self.peer_manager_context();
         for protocol in config.protocols.iter() {
             pm_context.add_upstream_handler(protocol, network_notifs_tx.clone());

@@ -392,8 +392,14 @@ impl EpochManager {
             "Received verified epoch change",
         );
 
+        let next_block_epoch = ledger_info.ledger_info().next_block_epoch();
+
         // shutdown existing processor first to avoid race condition with state sync.
-        self.shutdown_current_processor().await;
+        self.shutdown_current_processor(next_block_epoch).await;
+        info!(
+            LogSchema::new(LogEvent::NewEpoch).epoch(ledger_info.ledger_info().next_block_epoch()),
+            "Finished shutting down current processor.",
+        );
         // make sure storage is on this ledger_info too, it should be no-op if it's already committed
         // panic if this doesn't succeed since the current processors are already shutdown.
         self.commit_state_computer
@@ -405,7 +411,15 @@ impl EpochManager {
             ))
             .expect("Failed to sync to new epoch");
 
+        info!(
+            LogSchema::new(LogEvent::NewEpoch).epoch(ledger_info.ledger_info().next_block_epoch()),
+            "Finished syncing to ledger info.",
+        );
         monitor!("reconfig", self.await_reconfig_notification().await);
+        info!(
+            LogSchema::new(LogEvent::NewEpoch).epoch(ledger_info.ledger_info().next_block_epoch()),
+            "Finished awaiting reconfig notification.",
+        );
         Ok(())
     }
 
@@ -490,7 +504,7 @@ impl EpochManager {
         OrderingStateComputer::new(block_tx, self.commit_state_computer.clone(), reset_tx)
     }
 
-    async fn shutdown_current_processor(&mut self) {
+    async fn shutdown_current_processor(&mut self, next_block_epoch: u64) {
         if let Some(close_tx) = self.round_manager_close_tx.take() {
             // Release the previous RoundManager, especially the SafetyRule client
             let (ack_tx, ack_rx) = oneshot::channel();
@@ -502,6 +516,10 @@ impl EpochManager {
                 .expect("[EpochManager] Fail to drop round manager");
         }
         self.round_manager_tx = None;
+        info!(
+            LogSchema::new(LogEvent::NewEpoch).epoch(next_block_epoch),
+            "Dropped round manager.",
+        );
 
         // Shutdown the previous buffer manager, to release the SafetyRule client
         self.buffer_manager_msg_tx = None;
@@ -518,8 +536,18 @@ impl EpochManager {
                 .expect("[EpochManager] Fail to drop buffer manager");
         }
 
+        info!(
+            LogSchema::new(LogEvent::NewEpoch).epoch(next_block_epoch),
+            "Dropped buffer manager.",
+        );
+
         // Shutdown the block retrieval task by dropping the sender
         self.block_retrieval_tx = None;
+
+        info!(
+            LogSchema::new(LogEvent::NewEpoch).epoch(next_block_epoch),
+            "Dropped block retrieval task.",
+        );
     }
 
     async fn start_round_manager(

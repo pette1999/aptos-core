@@ -93,6 +93,7 @@ pub struct AppConfig {
     // TODO(philiphayes): only relevant for services
     // TODO(philiphayes): in the future, use a Service trait here instead?
     pub inbound_queue: Option<aptos_channel::Config>,
+    pub name: String,
 }
 
 impl AppConfig {
@@ -102,6 +103,7 @@ impl AppConfig {
         Self {
             protocols: ProtocolIdSet::from_iter(protocols),
             inbound_queue: None,
+            name: "".to_string(),
         }
     }
 
@@ -114,6 +116,21 @@ impl AppConfig {
         Self {
             protocols: ProtocolIdSet::from_iter(protocols),
             inbound_queue: Some(inbound_queue),
+            name: "".to_string(),
+        }
+    }
+
+    /// AptosNet peer-to-peer service configuration. A peer-to-peer service is both
+    /// a client and a service.
+    pub fn p2p_with_name(
+        protocols: impl IntoIterator<Item = ProtocolId>,
+        inbound_queue: aptos_channel::Config,
+        name: String,
+    ) -> Self {
+        Self {
+            protocols: ProtocolIdSet::from_iter(protocols),
+            inbound_queue: Some(inbound_queue),
+            name,
         }
     }
 
@@ -126,6 +143,7 @@ impl AppConfig {
         Self {
             protocols: ProtocolIdSet::from_iter(protocols),
             inbound_queue: Some(inbound_queue),
+            name: "".to_string(),
         }
     }
 }

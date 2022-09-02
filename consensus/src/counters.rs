@@ -305,8 +305,8 @@ pub static BUFFER_MANAGER_MSGS: Lazy<IntCounterVec> = Lazy::new(|| {
 });
 
 /// Counters(queued,dequeued,dropped) related to consensus channel
-pub static CONSENSUS_CHANNEL_MSGS: Lazy<IntGauge> = Lazy::new(|| {
-    register_int_gauge!(
+pub static CONSENSUS_CHANNEL_MSGS: Lazy<IntCounterVec> = Lazy::new(|| {
+    register_int_counter_vec!(
         "aptos_consensus_channel_msgs_count",
         "Counters(queued,dequeued,dropped) related to consensus channel",
     )
@@ -324,8 +324,8 @@ pub static ROUND_MANAGER_CHANNEL_MSGS: Lazy<IntCounterVec> = Lazy::new(|| {
 });
 
 /// Counters(queued,dequeued,dropped) related to block retrieval channel
-pub static BLOCK_RETRIEVAL_CHANNEL_MSGS: Lazy<IntGauge> = Lazy::new(|| {
-    register_int_gauge!(
+pub static BLOCK_RETRIEVAL_CHANNEL_MSGS: Lazy<IntCounterVec> = Lazy::new(|| {
+    register_int_counter_vec!(
         "aptos_consensus_block_retrieval_channel_msgs_count",
         "Counters(queued,dequeued,dropped) related to block retrieval channel",
     )

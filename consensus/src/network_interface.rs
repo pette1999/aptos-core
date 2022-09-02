@@ -103,11 +103,12 @@ pub const DIRECT_SEND: &[ProtocolId] = &[
 /// TODO: make this configurable
 pub fn network_endpoint_config() -> AppConfig {
     let protos = RPC.iter().chain(DIRECT_SEND.iter()).copied();
-    AppConfig::p2p(
+    AppConfig::p2p_with_name(
         protos,
         aptos_channel::Config::new(NETWORK_CHANNEL_SIZE)
             .queue_style(QueueStyle::FIFO)
             .counters(&counters::PENDING_CONSENSUS_NETWORK_EVENTS),
+        "consensus".to_string(),
     )
 }
 

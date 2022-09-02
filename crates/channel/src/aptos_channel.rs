@@ -44,6 +44,7 @@ struct SharedState<K: Eq + Hash + Clone, M> {
     /// considered terminated when sender has dropped and we have drained everything
     /// inside our internal queue.
     stream_terminated: bool,
+    name: String,
 }
 
 /// The sending end of the aptos_channel.
@@ -169,17 +170,21 @@ impl<K: Eq + Hash + Clone, M> Stream for Receiver<K, M> {
     /// it sets the waker passed to it by the scheduler/executor and returns Pending
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut shared_state = self.shared_state.lock();
+        println!("{} poll_next", shared_state.name);
         if let Some((val, status_ch)) = shared_state.internal_queue.pop() {
             if let Some(status_ch) = status_ch {
                 let _err = status_ch.send(ElementStatus::Dequeued);
             }
+            println!("{} ready value", shared_state.name);
             Poll::Ready(Some(val))
         // all senders have been dropped (and so the stream is terminated)
         } else if shared_state.num_senders == 0 {
             shared_state.stream_terminated = true;
+            println!("{} ready none", shared_state.name);
             Poll::Ready(None)
         } else {
             shared_state.waker = Some(cx.waker().clone());
+            println!("{} pending", shared_state.name);
             Poll::Pending
         }
     }
@@ -228,6 +233,39 @@ impl Config {
     pub fn build<K: Eq + Hash + Clone, M>(self) -> (Sender<K, M>, Receiver<K, M>) {
         new(self.queue_style, self.max_capacity, self.counters)
     }
+
+    pub fn build_with_name<K: Eq + Hash + Clone, M>(
+        self,
+        name: &String,
+    ) -> (Sender<K, M>, Receiver<K, M>) {
+        new_with_name(self.queue_style, self.max_capacity, self.counters, name)
+    }
+}
+
+/// Create a new Channel and returns the two ends of the channel.
+pub fn new_with_name<K: Eq + Hash + Clone, M>(
+    queue_style: QueueStyle,
+    max_queue_size_per_key: usize,
+    counters: Option<&'static IntCounterVec>,
+    name: &String,
+) -> (Sender<K, M>, Receiver<K, M>) {
+    let max_queue_size_per_key =
+        NonZeroUsize!(max_queue_size_per_key, "aptos_channel cannot be of size 0");
+    let shared_state = Arc::new(Mutex::new(SharedState {
+        internal_queue: PerKeyQueue::new(queue_style, max_queue_size_per_key, counters),
+        waker: None,
+        num_senders: 1,
+        receiver_dropped: false,
+        stream_terminated: false,
+        name: name.clone(),
+    }));
+    let shared_state_clone = Arc::clone(&shared_state);
+    (
+        Sender { shared_state },
+        Receiver {
+            shared_state: shared_state_clone,
+        },
+    )
 }
 
 /// Create a new Channel and returns the two ends of the channel.
@@ -244,6 +282,7 @@ pub fn new<K: Eq + Hash + Clone, M>(
         num_senders: 1,
         receiver_dropped: false,
         stream_terminated: false,
+        name: "".to_string(),
     }));
     let shared_state_clone = Arc::clone(&shared_state);
     (
