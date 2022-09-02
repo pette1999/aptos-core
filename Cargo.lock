@@ -9843,6 +9843,7 @@ dependencies = [
  "aptos-logger",
  "aptos-rest-client",
  "aptos-sdk",
+ "cached-packages",
  "clap 3.2.17",
  "futures",
  "itertools",

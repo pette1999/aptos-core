@@ -565,9 +565,9 @@ async fn wait_for_single_account_sequence(
     account: &LocalAccount,
     wait_timeout: Duration,
 ) -> Result<()> {
-    let deadline = Instant::now() + wait_timeout;
-    while Instant::now() <= deadline {
-        time::sleep(Duration::from_millis(1000)).await;
+    let start_time = Instant::now();
+    while start_time.elapsed() <= wait_timeout {
+        time::sleep(Duration::from_millis(3000)).await;
         match query_sequence_numbers(client, [account.address()].iter()).await {
             Ok(sequence_numbers) => {
                 if sequence_numbers[0] >= account.sequence_number() {
@@ -582,8 +582,11 @@ async fn wait_for_single_account_sequence(
             }
         }
     }
+
     Err(anyhow!(
-        "Timed out waiting for single account {:?} sequence number for instance {:?}",
+        "Timed out ({}s, wait timeout {}s) waiting for single account {:?} sequence number for instance {:?}",
+        start_time.elapsed().as_secs(),
+        wait_timeout.as_secs(),
         account,
         client
     ))

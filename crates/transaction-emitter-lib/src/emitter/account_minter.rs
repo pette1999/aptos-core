@@ -339,7 +339,7 @@ where
 
     // Wait for source account to exist, this can happen because the corresponding REST endpoint might
     // not be up to date with the latest ledger state and requires some time for syncing.
-    wait_for_single_account_sequence(&client, &source_account, Duration::from_secs(30)).await?;
+    wait_for_single_account_sequence(&client, &source_account, Duration::from_secs(90)).await?;
     while i < num_new_accounts {
         let batch_size = min(max_num_accounts_per_batch, num_new_accounts - i);
         let mut batch = if reuse_account {
