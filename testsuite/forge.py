@@ -484,6 +484,7 @@ class ForgeContext:
     time: Time
 
     # forge criteria
+    forge_enable_failpoints: bool
     forge_test_suite: str
     forge_runner_duration_secs: str
 
@@ -813,33 +814,42 @@ class LocalForgeRunner(ForgeRunner):
             resource.RLIMIT_NOFILE, resource.RLIM_INFINITY, resource.RLIM_INFINITY
         )
         port_forward_process = context.processes.spawn(prometheus_port_forward)
+
+        cmd = [
+            "cargo",
+            "run",
+            "-p",
+            "forge-cli",
+            "--",
+            "--suite",
+            context.forge_test_suite,
+            "--duration-secs",
+            context.forge_runner_duration_secs,
+            "test",
+            "k8s-swarm",
+            "--image-tag",
+            context.image_tag,
+            "--upgrade-image-tag",
+            context.upgrade_image_tag,
+            "--namespace",
+            context.forge_namespace,
+            "--port-forward",
+            *context.reuse_args,
+            *context.keep_args,
+            *context.haproxy_args,
+        ]
+
+        # Build features list
+        features = []
+        if context.forge_enable_failpoints:
+            features.append("failpoints")
+        features = ",".join(features)
+        # Inject it into the command after "cargo run"
+        cmd[2:2] = ["--features", features]
+
         with ForgeResult.with_context(context) as forge_result:
             result = context.shell.run(
-                [
-                    "cargo",
-                    "run",
-                    "-p",
-                    "forge-cli",
-                    "--",
-                    "--suite",
-                    context.forge_test_suite,
-                    "--mempool-backlog",
-                    "5000",
-                    "--duration-secs",
-                    context.forge_runner_duration_secs,
-                    "test",
-                    "k8s-swarm",
-                    "--image-tag",
-                    context.image_tag,
-                    "--upgrade-image-tag",
-                    context.upgrade_image_tag,
-                    "--namespace",
-                    context.forge_namespace,
-                    "--port-forward",
-                    *context.reuse_args,
-                    *context.keep_args,
-                    *context.haproxy_args,
-                ],
+                cmd,
                 stream_output=True,
             )
             forge_result.set_output(result.output.decode())
@@ -1339,6 +1349,7 @@ def test(
         filesystem=filesystem,
         processes=processes,
         time=time,
+        forge_enable_failpoints=forge_enable_failpoints,
         forge_test_suite=forge_test_suite,
         forge_runner_duration_secs=forge_runner_duration_secs,
         reuse_args=["--reuse"] if forge_namespace_reuse else [],
